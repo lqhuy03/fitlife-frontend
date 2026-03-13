@@ -1,49 +1,38 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { User } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 
+// --- IMPORT CÁC TRANG (PAGES THẬT) ---
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
 import ForgotPassword from '../pages/auth/ForgotPassword';
+import Dashboard from '../pages/Dashboard';
 
+// --- IMPORT BỘ KHUNG (LAYOUT THẬT) ---
+import MainLayout from '../components/layout/MainLayout';
+
+// COMPONENT BẢO VỆ TUYẾN ĐƯỜNG (Private Route)
 const PrivateRoute = ({ children }) => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
 const AppRouter = () => {
-    const logout = useAuthStore((state) => state.logout);
-    const user = useAuthStore((state) => state.user);
-
     return (
         <BrowserRouter>
             <Routes>
-                {/* PUBLIC ROUTES */}
+                {/* PUBLIC ROUTES (Ai cũng vào được) */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
 
-                {/* PRIVATE ROUTES */}
+                {/* PRIVATE ROUTES (Bắt buộc phải có Token) */}
                 <Route
                     path="/"
                     element={
                         <PrivateRoute>
-                            <div className="flex flex-col h-screen items-center justify-center bg-gray-100 p-4 font-sans">
-                                <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md w-full border border-gray-200">
-                                    <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <User className="w-8 h-8" />
-                                    </div>
-                                    <h1 className="text-2xl font-bold text-gray-800 mb-2">Đăng nhập thành công!</h1>
-                                    <p className="text-gray-600 mb-6">Xin chào, <span className="font-bold text-primary">{user?.username}</span></p>
-
-                                    <button
-                                        onClick={logout}
-                                        className="w-full bg-danger hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-md active:scale-95"
-                                    >
-                                        Đăng xuất an toàn
-                                    </button>
-                                </div>
-                            </div>
+                            <MainLayout>
+                                <Dashboard />
+                            </MainLayout>
                         </PrivateRoute>
                     }
                 />
