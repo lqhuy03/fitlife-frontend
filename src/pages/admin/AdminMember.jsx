@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from "../../api/axiosClient.js";
-import { Users, Search, ChevronLeft, ChevronRight, Lock, Unlock, Mail, Phone } from 'lucide-react';
+import { Users, Search, ChevronLeft, ChevronRight, Lock, Unlock, Mail, Phone, Edit, UserCog } from 'lucide-react';
 
 export default function AdminMember() {
     const [members, setMembers] = useState([]);
@@ -13,22 +13,25 @@ export default function AdminMember() {
     const [keyword, setKeyword] = useState('');
     const [searchInput, setSearchInput] = useState('');
 
-    // 1. GỌI API LẤY DANH SÁCH HỘI VIÊN
+    // State cho Modal Cập nhật
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [formData, setFormData] = useState({
+        fullName: '',
+        email: '',
+        phone: ''
+    });
+
+    // 1. GỌI API LẤY DANH SÁCH
     const fetchMembers = async () => {
         setLoading(true);
         try {
-            // Lưu ý: Backend cần có API này (GET /admin/members)
             const response = await axiosClient.get(`/admin/members?page=${page}&size=${size}&keyword=${keyword}`);
             const pageData = response.data;
             setMembers(pageData.data);
             setTotalPages(pageData.totalPages);
         } catch (error) {
             console.error("Lỗi tải danh sách hội viên:", error);
-            // Giả lập data nếu BE chưa có API để em xem UI trước (XÓA ĐOẠN NÀY KHI CÓ API THẬT)
-            setMembers([
-                { id: 1, fullName: 'Nguyễn Văn A', email: 'nva@gmail.com', phone: '0901234567', status: 'ACTIVE', joinDate: '2026-03-01' },
-                { id: 2, fullName: 'Trần Thị B', email: 'ttb@gmail.com', phone: '0987654321', status: 'BANNED', joinDate: '2026-03-10' }
-            ]);
         } finally {
             setLoading(false);
         }
@@ -44,18 +47,43 @@ export default function AdminMember() {
         setKeyword(searchInput);
     };
 
-    // 2. XỬ LÝ KHÓA/MỞ KHÓA TÀI KHOẢN
+    // 2. KHÓA / MỞ KHÓA TÀI KHOẢN
     const handleToggleLock = async (id, currentStatus) => {
         const actionText = currentStatus === 'ACTIVE' ? 'KHÓA' : 'MỞ KHÓA';
         if (window.confirm(`Bạn có chắc muốn ${actionText} tài khoản này?`)) {
             try {
-                // Backend cần có API này (PATCH /admin/members/{id}/toggle-lock)
                 await axiosClient.patch(`/admin/members/${id}/toggle-lock`);
                 fetchMembers();
             } catch (error) {
                 console.error("Lỗi khóa tài khoản:", error);
                 alert("Đã xảy ra lỗi, vui lòng thử lại!");
             }
+        }
+    };
+
+    // 3. MỞ MODAL SỬA
+    const openModal = (member) => {
+        setEditingId(member.id);
+        setFormData({
+            fullName: member.fullName || '',
+            email: member.email || '',
+            phone: member.phone || ''
+        });
+        setIsModalOpen(true);
+    };
+
+    // 4. SUBMIT UPDATE FORM
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            // Gọi API Update (chú ý payload phải khớp với MemberCreationRequest hoặc UpdateRequest của em)
+            await axiosClient.put(`/admin/members/${editingId}`, formData);
+            alert("Cập nhật thông tin hội viên thành công!");
+            setIsModalOpen(false);
+            fetchMembers(); // Load lại bảng
+        } catch (error) {
+            console.error("Lỗi lưu dữ liệu:", error);
+            alert(error.response?.data?.message || "Có lỗi xảy ra khi lưu!");
         }
     };
 
@@ -144,17 +172,26 @@ export default function AdminMember() {
                                                     {member.status === 'ACTIVE' ? 'HOẠT ĐỘNG' : 'ĐÃ KHÓA'}
                                                 </span>
                                         </td>
-                                        <td className="p-4 text-center">
+                                        <td className="p-4 text-center flex justify-center gap-2">
+                                            {/* Nút Edit */}
+                                            <button
+                                                onClick={() => openModal(member)}
+                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
+                                                title="Chỉnh sửa thông tin"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            {/* Nút Khóa */}
                                             <button
                                                 onClick={() => handleToggleLock(member.id, member.status)}
-                                                className={`p-2 rounded-lg transition-colors flex items-center justify-center mx-auto gap-2 text-sm font-medium ${
+                                                className={`p-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium ${
                                                     member.status === 'ACTIVE'
                                                         ? 'text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200'
                                                         : 'text-green-600 hover:bg-green-50 border border-transparent hover:border-green-200'
                                                 }`}
                                                 title={member.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
                                             >
-                                                {member.status === 'ACTIVE' ? <><Lock size={16} /> Khóa</> : <><Unlock size={16} /> Mở khóa</>}
+                                                {member.status === 'ACTIVE' ? <Lock size={16} /> : <Unlock size={16} />}
                                             </button>
                                         </td>
                                     </tr>
@@ -180,6 +217,72 @@ export default function AdminMember() {
                     </div>
                 </div>
             </div>
+
+            {/* MODAL CẬP NHẬT THÔNG TIN HỘI VIÊN */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-gray-100 flex items-center gap-2">
+                            <UserCog className="text-blue-600" />
+                            <h2 className="text-xl font-bold text-gray-800">
+                                Cập Nhật Hồ Sơ Hội Viên
+                            </h2>
+                        </div>
+                        <form onSubmit={handleSubmit} className="p-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={formData.fullName}
+                                        onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                                        placeholder="Nhập họ và tên..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="tel"
+                                        required
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                        placeholder="Ví dụ: 0901234567"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email liên hệ <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="email"
+                                        required
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                        placeholder="Ví dụ: nva@gmail.com"
+                                    />
+                                </div>
+                            </div>
+                            <div className="mt-8 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                                >
+                                    Hủy bỏ
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 shadow-sm transition-colors"
+                                >
+                                    Lưu Thay Đổi
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
