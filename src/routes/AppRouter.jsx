@@ -14,6 +14,8 @@ import MyWorkout from '../pages/MyWorkout'; // 1. IMPORT TRANG THEO DÕI TẬP L
 // --- IMPORT BỘ KHUNG (LAYOUT THẬT) ---
 import MainLayout from '../components/layout/MainLayout';
 
+import AdminGymPackage from '../pages/admin/AdminGymPackage';
+
 const PrivateRoute = ({ children }) => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     return isAuthenticated ? children : <Navigate to="/login" replace />;
@@ -75,6 +77,8 @@ const AppRouter = () => {
                 />
 
                 <Route path="/payment-result" element={<PaymentResult />} />
+
+                <Route path="/admin/packages" element={<AdminGymPackage />} />
             </Routes>
         </BrowserRouter>
     );
